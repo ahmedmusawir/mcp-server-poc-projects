@@ -24,8 +24,6 @@ server_params = StdioServerParameters(
     command=venv_python,
     args=[mcp_path],
     env=env
-    # args=[os.path.join("agents", "products", "products_mcp_stdio_server.py")]
-    # args=["/agents/products/products_mcp_stdio_server.py"]
 )
 
 async def run_agent():
@@ -42,7 +40,7 @@ async def run_agent():
                 ]
             })
 
-            print("\n🛍️ Products Response:")
+            print("\n Products Response:")
             print(response["messages"][-1].content)
 
 if __name__ == "__main__":

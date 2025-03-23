@@ -1,75 +1,145 @@
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent
+from langgraph.graph.message import add_messages
+from typing import TypedDict, Annotated
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from langchain_mcp_adapters.tools import load_mcp_tools
 import os
-import sys
-import argparse
-import subprocess
-from pathlib import Path
+import asyncio
 
-from pathlib import Path
+from dotenv import load_dotenv
 
-# Define project root
-project_root = Path(__file__).resolve().parent
+load_dotenv()
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--agent", required=True, help="Name of the agent to run (e.g., products)")
-args = parser.parse_args()
+env = os.environ.copy()
+env["PYTHONPATH"] = os.getcwd()
+env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-
-# Define your agent entrypoints (relative to project root)
-agent_entrypoint = {
-    "products": "agents/products/products_mcp_stdio_server.py",
-    "blog": "agents/blog/blog_mcp_stdio_server.py",
-    "recipes": "agents/recipes/recipes_mcp_stdio_server.py"
-}
-
+# Path to the venv's Python executable
 venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe")
 
-subprocess.Popen(
-    [venv_python, str(agent_entrypoint[args.agent])],
-    env={"PYTHONPATH": str(project_root), **os.environ}
-)
+# Path to the MCP server script
+server_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py")
+server_params = StdioServerParameters(command=venv_python, args=[server_path], env=env)
 
 
-# subprocess.Popen([venv_python, agent_entrypoint], env={"PYTHONPATH": str(project_root), **os.environ})
+# --- Product Agent (MCP-backed) ---
+async def create_product_agent(session):
+    tools = await load_mcp_tools(session)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.5)
+    return create_react_agent(llm, tools)
+
+# --- Weather Agent (for demonstration) ---
+# (Your existing weather_agent function, unchanged)
+def weather_agent(city: str):
+    """
+    Creates a modular weather agent with its own toolset.
+    Returns the weather_agent for integration into the graph.
+    """
+    # Define the LLM
+    llm = ChatOpenAI(model_name='gpt-4o', temperature=0.5)
+
+    # Define the weather tool
+    @tool
+    def get_weather(city: str):
+        """Call to get the current weather. Use this anytime asked about the weather."""
+        if city.lower() == "paris":
+            return "It's always sunny in Paris."
+        else:
+            return "It's cold and wet."
+
+    # Create the weather agent
+    weather_agent_instance = create_react_agent(llm, tools=[get_weather])
+    return weather_agent_instance
 
 
-def set_pythonpath():
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    sys.path.insert(0, project_root)
-    os.environ['PYTHONPATH'] = project_root
-    print(f"✅ PYTHONPATH set to: {project_root}\n")
+# --- LangGraph Setup ---
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+# Initialize the graph builder
+graph_builder = StateGraph(State)
+
+# Define the LLM for the prompt_nexus
+llm = ChatOpenAI(model_name='gpt-4o', temperature=0.5)
+
+# Define the prompt_nexus node
+def prompt_nexus(state: State):
+    return {"messages": [llm.invoke(state["messages"])]}
+
+# Add the prompt_nexus node to the graph
+graph_builder.add_node("prompt_nexus", prompt_nexus)
+
+# --- Node for the Product Agent (with connection management) ---
+async def product_agent_node(state: State):
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            agent = await create_product_agent(session)  # Create the agent
+            response = await agent.ainvoke(state) # Pass entire state
+            return response # Return the agent's full response
+            # connection is closed when exiting the 'async with' blocks
+
+# Add the product agent node
+graph_builder.add_node("products_agent", product_agent_node)
+
+# --- Add Weather Agent Node (for comparison/demonstration) ---
+
+async def weather_agent_node(state: State):
+  agent = weather_agent("") #dummy arg
+  response = await agent.ainvoke(state)
+  return response
+
+graph_builder.add_node("weather_agent", weather_agent_node)
 
 
-def run_products_agent():
-    from agents.products.product_agent import run_agent
-    import asyncio
-    print("🧠 Launching Products Agent via STDIO...")
-    asyncio.run(run_agent())
+# --- Routing Logic ---
 
+def route_to_agent(state: State):
+    last_message = state["messages"][-1].content.lower()
+    if "weather" in last_message:
+        return "weather_agent"
+    elif "product" in last_message or "buy" in last_message:
+        return "products_agent"
+    return END  # Or route to a default node
 
-def run_blog_agent():
-    print("🚧 Blog Agent not yet implemented.")
+# Add conditional edges
+graph_builder.add_conditional_edges("prompt_nexus", route_to_agent, {
+    "weather_agent": "weather_agent",
+    "products_agent": "products_agent",
+    END: END
+})
 
+# Add normal edges
+graph_builder.add_edge("weather_agent", END)
+graph_builder.add_edge("products_agent", END)
 
-def run_recipes_agent():
-    print("🚧 Recipes Agent not yet implemented.")
+# Set entry point
+graph_builder.set_entry_point("prompt_nexus")
 
+# Compile the graph
+graph = graph_builder.compile()
 
-def main():
-    parser = argparse.ArgumentParser(description="CyberLorian Agent Launcher")
-    parser.add_argument("--agent", type=str, help="Choose agent: products | blog | recipes")
-    args = parser.parse_args()
+# --- Run the Graph ---
 
-    set_pythonpath()
+async def main():
+    # Test the graph with different inputs
+    inputs = [
+        {"messages": [{"role": "user", "content": "What's the weather like?"}]},
+        {"messages": [{"role": "user", "content": "Show me some products."}]},
+        {"messages": [{"role": "user", "content": "Can I buy a phone?"}]},
+        {"messages": [{"role": "user", "content": "What is two plus two?"}]}, # Example of a question neither agent handles
+    ]
 
-    if args.agent == "products":
-        run_products_agent()
-    elif args.agent == "blog":
-        run_blog_agent()
-    elif args.agent == "recipes":
-        run_recipes_agent()
-    else:
-        print("❌ Invalid agent. Use --agent products | blog | recipes")
-
+    for input_data in inputs:
+        result = await graph.ainvoke(input_data)
+        print(f"Input: {input_data['messages'][-1]['content']}")
+        print(f"Output: {result['messages'][-1].content}")  # Print the last message
+        print("-" * 30)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

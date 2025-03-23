@@ -19,15 +19,7 @@ mcp = FastMCP("Products")
 # Register tools with MCP (wrap tested logic)
 @mcp.tool()
 def list_products_tool() -> dict:
-    try:
-        print("Fetching products...")
-        data = list_products()
-        print("Fetched products")
-        return data
-    except Exception as e:
-        print("Tool failed:", e)
-        return {"error": str(e)}
-
+    return list_products()
 
 @mcp.tool()
 def search_product_by_word_tool(q: str) -> dict:
