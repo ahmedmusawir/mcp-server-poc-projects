@@ -24,20 +24,25 @@ async def create_product_agent(session):
 if __name__ == "__main__":
     import asyncio
     import os
+    import sys
     from dotenv import load_dotenv
     from mcp import StdioServerParameters
     # from langgraph.utils.agent_utils import create_mcp_agent_executor #OLD
-    from utils.agent_utils import create_mcp_agent_executor  # NEW - Absolute import
+    from agents.products.agent_utils import create_mcp_agent_executor  # NEW - Absolute import
 
 
     load_dotenv()
 
     # Set env and paths
     env = os.environ.copy()
+    # No longer required if using this from the root
+    # env["PYTHONPATH"] = os.getenv("PYTHONPATH")  
     env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 
+    # venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe") #OLD - Relative
     venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe")
+    # server_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py") #OLD
     server_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py")
 
     server_params = StdioServerParameters(command=venv_python, args=[server_path], env=env)

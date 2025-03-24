@@ -1,4 +1,3 @@
-# agents/products/product_agent_module.py
 from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
@@ -26,16 +25,14 @@ if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
     from mcp import StdioServerParameters
-    # from langgraph.utils.agent_utils import create_mcp_agent_executor #OLD
-    from utils.agent_utils import create_mcp_agent_executor  # NEW - Absolute import
-
+    from langgraph.utils.agent_utils import create_mcp_agent_executor
 
     load_dotenv()
 
     # Set env and paths
     env = os.environ.copy()
+    env["PYTHONPATH"] = os.getenv("PYTHONPATH")
     env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
 
     venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe")
     server_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py")
@@ -53,7 +50,7 @@ if __name__ == "__main__":
         # Run the node
         output = await agent_node(input_data)
         print("\n🧪 Product Agent Output:")
-        print(output["messages"][-1].content)
+        print(output["messages"][-1]["content"])
         print("-" * 40)
 
     asyncio.run(run_test())
