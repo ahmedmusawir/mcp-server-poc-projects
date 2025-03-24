@@ -25,7 +25,7 @@ if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
     from mcp import StdioServerParameters
-    from langgraph.utils.agent_utils import create_mcp_agent_executor
+    from utils.agent_utils import create_mcp_agent_executor
 
     load_dotenv()
 

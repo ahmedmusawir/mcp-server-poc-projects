@@ -26,16 +26,13 @@ if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
     from mcp import StdioServerParameters
-    # from langgraph.utils.agent_utils import create_mcp_agent_executor #OLD
     from utils.agent_utils import create_mcp_agent_executor  # NEW - Absolute import
-
 
     load_dotenv()
 
     # Set env and paths
     env = os.environ.copy()
     env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
 
     venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe")
     server_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py")
@@ -47,7 +44,7 @@ if __name__ == "__main__":
 
         # Simulate LangGraph-style input
         input_data = {
-            "messages": [{"role": "user", "content": "Show me some products"}]
+            "messages": [{"role": "user", "content": "Show me category list"}]
         }
 
         # Run the node
