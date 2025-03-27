@@ -1,9 +1,17 @@
 import os
 import sys
 
-tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__))) #<--- change here.
-sys.path.append(tools_dir)
-print(f"Added to sys.path: {tools_dir}")
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory (agents)
+agents_dir = os.path.dirname(script_dir)
+# Get the grandparent directory (project root)
+project_root = os.path.dirname(agents_dir)
+
+# Add the project root to sys.path if it's not already there
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+    print(f"Added project root to sys.path: {project_root}")
 
 from mcp.server.fastmcp import FastMCP
 from agents.products.tools.product_tools import (

@@ -13,4 +13,4 @@ def print_tree(start_path, max_depth=2, prefix=""):
             print(f"{subindent}{f}")
 
 if __name__ == "__main__":
-    print_tree(".", max_depth=2)
+    print_tree(".", max_depth=2) 

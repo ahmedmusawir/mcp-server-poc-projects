@@ -1,7 +1,7 @@
 import os
 import sys
 
-tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__))) #<--- change here.
+tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__))) 
 sys.path.append(tools_dir)
 print(f"Added to sys.path: {tools_dir}")
 
@@ -19,7 +19,15 @@ mcp = FastMCP("Products")
 # Register tools with MCP (wrap tested logic)
 @mcp.tool()
 def list_products_tool() -> dict:
-    return list_products()
+    try:
+        print("Fetching products...")
+        data = list_products()
+        print("Fetched products")
+        return data
+    except Exception as e:
+        print("Tool failed:", e)
+        return {"error": str(e)}
+
 
 @mcp.tool()
 def search_product_by_word_tool(q: str) -> dict:

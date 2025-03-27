@@ -16,7 +16,7 @@ load_dotenv()
 model = ChatOpenAI(model="gpt-4o")
 
 # Use the venv's python to launch the MCP server
-venv_python = os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe")
+venv_python = os.path.join(os.getcwd(), ".venv", "bin", "python")
 
 mcp_path = os.path.join(os.getcwd(), "agents", "products", "products_mcp_stdio_server.py")
 

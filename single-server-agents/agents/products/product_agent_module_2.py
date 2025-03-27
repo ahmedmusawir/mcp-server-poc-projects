@@ -1,12 +1,3 @@
-import os
-import sys
-
-# Add the project root to sys.path if it's not already there
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-    print(f"Added project root to sys.path: {project_root}")
-
 # agents/products/product_agent_module.py
 from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -40,6 +31,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     env = os.environ.copy()
+    env["PYTHONPATH"] = os.getcwd()
     env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY") 
 
     # Path to the venv's Python executable
